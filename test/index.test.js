@@ -96,7 +96,7 @@ describe('set', () => {
   it('should resolve promise on success', (done) => {
     redisCache.set('foo', 'bar')
       .then(result => {
-        expect(result).toEqual('OK');
+        expect(result.toString()).toEqual('OK');
         done();
       });
   });
@@ -156,27 +156,6 @@ describe('set', () => {
         expect(err).not.toEqual(null);
         expect(err.message).toEqual('"undefined" is not a cacheable value');
         done();
-      } catch (e) {
-        done(e);
-      }
-    });
-  });
-
-  it('should store an undefined value if permitted by isCacheableValue', (done) => {
-    expect(customRedisCache.store.isCacheableValue(undefined)).toBe(true);
-    customRedisCache.set('foo3', undefined, (err) => {
-      try {
-        expect(err).toEqual(null);
-        customRedisCache.get('foo3', (err, data) => {
-          try {
-            expect(err).toEqual(null);
-            // redis stored undefined as 'undefined'
-            expect(data).toEqual('undefined');
-            done();
-          } catch (e) {
-            done(e);
-          }
-        });
       } catch (e) {
         done(e);
       }

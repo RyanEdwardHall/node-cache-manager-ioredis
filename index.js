@@ -1,4 +1,5 @@
 const Redis = require('ioredis');
+const snappy = require('snappy');
 
 const redisStore = (...args) => {
   let redisCache = null;
@@ -42,12 +43,13 @@ const redisStore = (...args) => {
       }
 
       const ttl = (options.ttl || options.ttl === 0) ? options.ttl : storeArgs.ttl;
-      const val = JSON.stringify(value) || '"undefined"';
-
+      // const val = value !== undefined ? snappy.compressSync(JSON.stringify(value)) : '"undefined"';
+      let val = JSON.stringify(value) || '"undefined"';
+      val = snappy.compressSync(val)
       if (ttl) {
-        redisCache.setex(key, ttl, val, handleResponse(cb));
+        redisCache.setBuffer(key, val, 'EX', ttl, handleResponse(cb))
       } else {
-        redisCache.set(key, val, handleResponse(cb));
+        redisCache.setBuffer(key, val, handleResponse(cb));
       }
     })
   );
@@ -62,10 +64,10 @@ const redisStore = (...args) => {
         cb = (err, result) => (err ? reject(err) : resolve(result));
       }
 
-      redisCache.get(key, handleResponse(cb, { parse: true }));
+      redisCache.getBuffer(key, handleResponse(cb, { parse: true }));
     })
   );
-  
+
   self.del = (key, options, cb) => {
     if (typeof options === 'function') {
       cb = options;
@@ -75,7 +77,7 @@ const redisStore = (...args) => {
   };
 
   self.reset = cb => redisCache.flushdb(handleResponse(cb));
-    
+
   self.keys = (pattern, cb) => (
     new Promise((resolve, reject) => {
       if (typeof pattern === 'function') {
@@ -95,16 +97,20 @@ const redisStore = (...args) => {
 
   return self;
 };
-  
+
 function handleResponse(cb, opts = {}) {
   return (err, result) => {
     if (err) {
       return cb && cb(err);
     }
 
+    if (result === null) {
+      return cb && cb(null, null)
+    }
+
     if (opts.parse) {
       try {
-        result = JSON.parse(result);
+        result = JSON.parse(snappy.uncompressSync(result, { asBuffer: false }));
       } catch (e) {
         return cb && cb(e);
       }
