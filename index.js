@@ -43,7 +43,6 @@ const redisStore = (...args) => {
       }
 
       const ttl = (options.ttl || options.ttl === 0) ? options.ttl : storeArgs.ttl;
-      // const val = value !== undefined ? snappy.compressSync(JSON.stringify(value)) : '"undefined"';
       let val = JSON.stringify(value) || '"undefined"';
       val = snappy.compressSync(val)
       if (ttl) {
